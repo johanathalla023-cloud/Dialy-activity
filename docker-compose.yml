@@ -1,0 +1,46 @@
+name: pkl-daily-activity
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pkl
+      POSTGRES_PASSWORD: pkl
+      POSTGRES_DB: pkl_daily
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pkl -d pkl_daily"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://pkl:pkl@db:5432/pkl_daily?schema=public"
+      AUTH_SECRET: "ubah-secret-ini-di-produksi-1234567890abcdef"
+      APP_URL: "http://localhost:3000"
+      SMTP_HOST: "mailpit"
+      SMTP_PORT: "1025"
+      SMTP_FROM: "Daily Activity PKL <no-reply@transhybrid.test>"
+      LINK_EXPIRY_DAYS: "7"
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:

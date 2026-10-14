@@ -1,0 +1,259 @@
+// Skema database Daily Activity PKL - Trans Hybrid
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SISWA
+  PEMBIMBING
+  HRD
+  ADMIN
+}
+
+enum Attendance {
+  HADIR
+  IZIN
+  SAKIT
+}
+
+enum LogStatus {
+  DRAFT
+  DIAJUKAN
+  DISETUJUI
+  REVISI
+}
+
+enum ReportType {
+  MINGGUAN
+  BULANAN
+  AKHIR
+}
+
+enum ReportStatus {
+  DRAFT
+  REVISI
+  FINAL
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  studentProfile    StudentProfile?
+  supervisorProfile SupervisorProfile?
+
+  @@index([role])
+}
+
+model School {
+  id           String   @id @default(cuid())
+  name         String
+  address      String?
+  city         String?
+  principalName String?
+  email        String?
+  phone        String?
+  createdAt    DateTime @default(now())
+
+  students StudentProfile[]
+}
+
+model Division {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  supervisors SupervisorProfile[]
+  placements  Placement[]
+}
+
+model StudentProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  nis       String   @unique
+  className String?
+  phone     String?
+  schoolId  String
+  createdAt DateTime @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school      School       @relation(fields: [schoolId], references: [id])
+  placements  Placement[]
+  logs        DailyReport[]
+  reports     Report[]
+
+  @@index([schoolId])
+}
+
+model SupervisorProfile {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  nip        String?
+  divisionId String
+  createdAt  DateTime @default(now())
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  division   Division    @relation(fields: [divisionId], references: [id])
+  placements Placement[]
+
+  @@index([divisionId])
+}
+
+model Placement {
+  id           String    @id @default(cuid())
+  studentId    String
+  supervisorId String
+  divisionId   String
+  startDate    DateTime  @db.Date
+  endDate      DateTime? @db.Date
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+
+  student    StudentProfile    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  supervisor SupervisorProfile @relation(fields: [supervisorId], references: [id])
+  division   Division          @relation(fields: [divisionId], references: [id])
+  logs       DailyReport[]
+
+  @@index([studentId])
+  @@index([supervisorId])
+  @@index([divisionId])
+}
+
+// Satu log harian per siswa per tanggal.
+model DailyReport {
+  id          String     @id @default(cuid())
+  studentId   String
+  placementId String?
+  date        DateTime   @db.Date
+  attendance  Attendance
+  status      LogStatus  @default(DRAFT)
+
+  // Data ketika Hadir
+  checkIn  String?
+  checkOut String?
+  activity String?
+  result   String?
+  obstacle String?
+  photoId  String?
+
+  // Data ketika Izin / Sakit
+  reason  String?
+  proofId String?
+
+  // Hasil pemeriksaan pembimbing
+  supervisorNote String?
+  submittedAt    DateTime?
+  reviewedAt     DateTime?
+  reviewedById   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student    StudentProfile     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  placement  Placement?         @relation(fields: [placementId], references: [id])
+  reportItems ReportItem[]
+
+  @@unique([studentId, date])
+  @@index([status])
+  @@index([studentId])
+}
+
+model Report {
+  id                String       @id @default(cuid())
+  number            String       @unique
+  type              ReportType
+  studentId         String
+  periodStart       DateTime     @db.Date
+  periodEnd         DateTime     @db.Date
+  status            ReportStatus @default(DRAFT)
+  verificationToken String       @unique
+  createdById       String
+  finalizedAt       DateTime?
+  note              String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  items     ReportItem[]
+  sends     ReportSend[]
+
+  @@index([studentId])
+  @@index([status])
+}
+
+model ReportItem {
+  id       String @id @default(cuid())
+  reportId String
+  logId    String
+
+  report Report      @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  log    DailyReport @relation(fields: [logId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, logId])
+}
+
+model ReportSend {
+  id             String    @id @default(cuid())
+  reportId       String
+  recipientEmail String
+  recipientType  String
+  token          String    @unique
+  expiresAt      DateTime
+  sentAt         DateTime  @default(now())
+  openedAt       DateTime?
+  status         String    @default("TERKIRIM")
+  error          String?
+  createdById    String
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorName  String?
+  action     String
+  entityType String
+  entityId   String
+  fromStatus String?
+  toStatus   String?
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+}
+
+model FileAsset {
+  id           String   @id @default(cuid())
+  filename     String
+  mimeType     String
+  size         Int
+  data         String
+  uploadedById String?
+  createdAt    DateTime @default(now())
+}
+
+model EmailOutbox {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  body      String
+  status    String   @default("TERCATAT")
+  error     String?
+  createdAt DateTime @default(now())
+}
