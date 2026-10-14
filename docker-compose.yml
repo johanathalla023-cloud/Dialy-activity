@@ -33,6 +33,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: "postgresql://pkl:pkl@db:5432/pkl_daily?schema=public"
+      DIRECT_URL: "******db:5432/pkl_daily?schema=public"
       AUTH_SECRET: "ubah-secret-ini-di-produksi-1234567890abcdef"
       APP_URL: "http://localhost:3000"
       SMTP_HOST: "mailpit"

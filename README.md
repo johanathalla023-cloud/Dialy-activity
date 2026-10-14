@@ -32,7 +32,7 @@ Hentikan dengan `Ctrl+C`, lalu `docker compose down` (tambahkan `-v` untuk mengh
 
 ```bash
 npm install
-# siapkan PostgreSQL, lalu sesuaikan DATABASE_URL di .env
+# siapkan PostgreSQL, lalu sesuaikan DATABASE_URL dan DIRECT_URL di .env
 npm run db:migrate        # atau: npx prisma migrate deploy
 npm run db:seed
 npm run dev               # http://localhost:3000
@@ -43,6 +43,26 @@ npm run dev               # http://localhost:3000
 > yang muncul bila server dev dijalankan di atas hasil `npm run build` (mode produksi).
 > Jika error tersebut pernah muncul, hentikan server, hapus folder `.next`, lalu jalankan
 > ulang `npm run dev` dan lakukan hard refresh (Ctrl+Shift+R) di browser.
+
+## Deploy ke Vercel dengan Neon
+
+Neon menyediakan PostgreSQL terkelola; URL koneksinya ditambahkan pada Vercel, bukan disimpan di Git.
+
+1. Buat project PostgreSQL di [Neon](https://neon.tech/) dan salin dua connection string dari bagian **Connect**:
+   - URL pooled (host biasanya berisi `-pooler`) untuk `DATABASE_URL`.
+   - URL direct/non-pooled untuk `DIRECT_URL`, dipakai Prisma saat menjalankan migrasi.
+2. Impor repository GitHub `johanathalla023-cloud/Dialy-activity` ke Vercel.
+3. Di **Project Settings → Environment Variables**, tambahkan `DATABASE_URL`, `DIRECT_URL`,
+   `AUTH_SECRET` (secret acak yang kuat, minimal 32 karakter), dan `APP_URL` dengan URL deployment
+   Vercel, misalnya `https://nama-aplikasi.vercel.app`. Atur juga `LINK_EXPIRY_DAYS=7` jika diperlukan.
+4. Gunakan `npm run vercel-build` sebagai Build Command. Perintah ini menjalankan migrasi Prisma lalu
+   build Next.js. Prisma memakai `DIRECT_URL` untuk migrasi dan `DATABASE_URL` untuk koneksi aplikasi.
+5. Deploy aplikasi. Untuk perubahan skema berikutnya, tambahkan migration Prisma ke GitHub; proses
+   build Vercel akan menjalankan migrasi sebelum build.
+
+Jangan menjalankan `npm run db:seed` pada database produksi: perintah itu menyiapkan akun-akun demo.
+Untuk testing, gunakan Neon branch/database terpisah dari data produksi. Jangan membagikan
+connection string atau `AUTH_SECRET` di chat maupun repository.
 
 ---
 

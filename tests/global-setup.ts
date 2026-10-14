@@ -5,6 +5,6 @@ export default function globalSetup() {
   // Siapkan skema database khusus pengujian (dibuat otomatis bila belum ada).
   execSync("npx prisma db push --skip-generate --force-reset --accept-data-loss", {
     stdio: "inherit",
-    env: { ...process.env, DATABASE_URL: TEST_DB_URL },
+    env: { ...process.env, DATABASE_URL: TEST_DB_URL, DIRECT_URL: TEST_DB_URL },
   });
 }
