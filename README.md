@@ -44,13 +44,17 @@ npm run dev               # http://localhost:3000
 > Jika error tersebut pernah muncul, hentikan server, hapus folder `.next`, lalu jalankan
 > ulang `npm run dev` dan lakukan hard refresh (Ctrl+Shift+R) di browser.
 
-## Deploy ke Vercel dengan Neon
+## Deploy ke Vercel dengan Supabase
 
-Neon menyediakan PostgreSQL terkelola; URL koneksinya ditambahkan pada Vercel, bukan disimpan di Git.
+Supabase menyediakan PostgreSQL terkelola. Aplikasi menggunakan database PostgreSQL Supabase melalui Prisma;
+URL koneksinya ditambahkan pada Vercel, bukan disimpan di Git.
 
-1. Buat project PostgreSQL di [Neon](https://neon.tech/) dan salin dua connection string dari bagian **Connect**:
-   - URL pooled (host biasanya berisi `-pooler`) untuk `DATABASE_URL`.
-   - URL direct/non-pooled untuk `DIRECT_URL`, dipakai Prisma saat menjalankan migrasi.
+1. Buat project di [Supabase](https://supabase.com/) dan buka **Project Settings → Database → Connect**.
+   Untuk deployment Vercel/serverless, salin:
+   - **Transaction Pooler** (port `6543`) untuk `DATABASE_URL`, lalu tambahkan `pgbouncer=true`
+     pada query string.
+   - **Session Pooler** (port `5432`) untuk `DIRECT_URL`, dipakai Prisma saat menjalankan migrasi.
+     Di Prisma 5, `directUrl` memakai URL ini untuk migrasi.
 2. Impor repository GitHub `johanathalla023-cloud/Dialy-activity` ke Vercel.
 3. Di **Project Settings → Environment Variables**, tambahkan `DATABASE_URL`, `DIRECT_URL`,
    `AUTH_SECRET` (secret acak yang kuat, minimal 32 karakter), dan `APP_URL` dengan URL deployment
@@ -61,7 +65,7 @@ Neon menyediakan PostgreSQL terkelola; URL koneksinya ditambahkan pada Vercel, b
    build Vercel akan menjalankan migrasi sebelum build.
 
 Jangan menjalankan `npm run db:seed` pada database produksi: perintah itu menyiapkan akun-akun demo.
-Untuk testing, gunakan Neon branch/database terpisah dari data produksi. Jangan membagikan
+Untuk testing, gunakan project/branch Supabase terpisah dari data produksi. Jangan membagikan
 connection string atau `AUTH_SECRET` di chat maupun repository.
 
 ---
