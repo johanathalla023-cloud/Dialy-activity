@@ -72,6 +72,18 @@ export default async function ApprovalDetailPage({
         <Row label="Diajukan">{log.submittedAt ? formatDateTime(log.submittedAt) : "-"}</Row>
       </div>
 
+      {/* Tombol Cetak PDF */}
+      <div className="mt-4">
+        <a
+          href={`/api/logs/${log.id}/pdf`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-secondary w-full"
+        >
+          Cetak PDF Log Ini
+        </a>
+      </div>
+
       {log.status === "DIAJUKAN" ? (
         <div className="mt-4 space-y-4">
           <form action={approveLogAction} className="card space-y-3">
