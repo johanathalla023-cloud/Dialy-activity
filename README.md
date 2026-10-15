@@ -3,62 +3,64 @@
 Aplikasi web untuk mencatat kegiatan harian PKL, persetujuan pembimbing industri, serta
 penerbitan laporan resmi (PDF bernomor + QR verifikasi) dan pengiriman tautan aman via email.
 
-Dibangun dengan **Next.js 14 (App Router) + TypeScript**, **PostgreSQL + Prisma**, **Tailwind CSS**,
-dan **Docker Compose**. Antarmuka mobile-first dan berbahasa Indonesia.
+Dibangun dengan **Next.js 14 (App Router) + TypeScript**, **PostgreSQL (Supabase) + Prisma**,
+dan **Tailwind CSS**. Antarmuka mobile-first dan berbahasa Indonesia.
 
 ---
 
-## 1. Cara Menjalankan (paling singkat)
+## 1. Cara Menjalankan
 
-Prasyarat: Docker Desktop sudah menyala.
+Database sepenuhnya di **Supabase** — Docker tidak diperlukan.
+
+### A. Siapkan Supabase
+
+1. Buat project di [Supabase](https://supabase.com/), lalu buka **Connect** (atau
+   **Project Settings → Database**).
+2. Catat host pooler, user (`postgres.<project-ref>`), dan password. Aplikasi memakai dua koneksi:
+   - **Transaction Pooler (port `6543`)** → `DATABASE_URL`, wajib ditambah
+     `?pgbouncer=true&connection_limit=1`.
+   - **Session Pooler (port `5432`)** → `DIRECT_URL`, dipakai `prisma migrate deploy`.
+
+### B. Isi environment
 
 ```bash
-docker compose up --build
+copy .env.example .env
 ```
 
-Aplikasi otomatis: menyalakan PostgreSQL, menjalankan migrasi, menyiapkan akun dan data awal, lalu
-menyalakan server. Seed tidak membuat log atau laporan contoh; data tersebut baru muncul setelah siswa
-mengisinya.
+Buka `.env`, ganti `<project-ref>`, `<region>`, dan `<password>` dengan nilai Supabase, lalu
+ganti `AUTH_SECRET` dengan string acak minimal 32 karakter.
 
-| Layanan | URL |
-|---|---|
-| Aplikasi | http://localhost:3000 |
-| Kotak masuk email demo (Mailpit) | http://localhost:8025 |
-| PostgreSQL | localhost:5432 (user `pkl`, pass `pkl`, db `pkl_daily`) |
-
-Hentikan dengan `Ctrl+C`, lalu `docker compose down` (tambahkan `-v` untuk menghapus data).
-
-### Menjalankan tanpa Docker (opsional)
+### C. Migrasi lalu jalankan
 
 ```bash
 npm install
-# siapkan PostgreSQL, lalu sesuaikan DATABASE_URL dan DIRECT_URL di .env
-npm run db:migrate        # atau: npx prisma migrate deploy
-npm run db:seed
+npm run db:migrate        # terapkan skema ke Supabase
+npm run db:seed           # opsional: buat akun demo (jangan di produksi)
 npm run dev               # http://localhost:3000
 ```
 
+Aplikasi berjalan di http://localhost:3000. Daftar akun demo ada di bagian 2.
+
 > Catatan: `npm run dev` otomatis menghapus folder `.next` terlebih dahulu (script `predev`).
-> Ini mencegah error runtime seperti `TypeError: __webpack_require__.n is not a function`
-> yang muncul bila server dev dijalankan di atas hasil `npm run build` (mode produksi).
-> Jika error tersebut pernah muncul, hentikan server, hapus folder `.next`, lalu jalankan
-> ulang `npm run dev` dan lakukan hard refresh (Ctrl+Shift+R) di browser.
+> Ini mencegah error runtime seperti `TypeError: __webpack_require__.n is not a function`.
 
 ## Deploy ke Vercel dengan Supabase
 
 Supabase menyediakan PostgreSQL terkelola. Aplikasi menggunakan database PostgreSQL Supabase melalui Prisma;
 URL koneksinya ditambahkan pada Vercel, bukan disimpan di Git.
 
-1. Buat project di [Supabase](https://supabase.com/) dan buka **Project Settings → Database → Connect**.
-   Untuk deployment Vercel/serverless, salin:
-   - **Transaction Pooler** (port `6543`) untuk `DATABASE_URL`, lalu tambahkan `pgbouncer=true`
-     pada query string.
+1. Buat project di [Supabase](https://supabase.com/) dan buka **Connect** (atau
+   **Project Settings → Database**). Untuk deployment Vercel/serverless, salin:
+   - **Transaction Pooler** (port `6543`) untuk `DATABASE_URL`, wajib ditambah
+     `?pgbouncer=true&connection_limit=1` pada query string.
    - **Session Pooler** (port `5432`) untuk `DIRECT_URL`, dipakai Prisma saat menjalankan migrasi.
      Di Prisma 5, `directUrl` memakai URL ini untuk migrasi.
 2. Impor repository GitHub `johanathalla023-cloud/Dialy-activity` ke Vercel.
 3. Di **Project Settings → Environment Variables**, tambahkan `DATABASE_URL`, `DIRECT_URL`,
    `AUTH_SECRET` (secret acak yang kuat, minimal 32 karakter), dan `APP_URL` dengan URL deployment
    Vercel, misalnya `https://nama-aplikasi.vercel.app`. Atur juga `LINK_EXPIRY_DAYS=7` jika diperlukan.
+   Pastikan dicentang untuk environment **Production** dan **Preview**, lalu **Redeploy** agar
+   nilai baru terpakai (env var yang ditambahkan setelah build tidak masuk ke build lama).
 4. Gunakan `npm run vercel-build` sebagai Build Command. Perintah ini menjalankan migrasi Prisma lalu
    build Next.js. Prisma memakai `DIRECT_URL` untuk migrasi dan `DATABASE_URL` untuk koneksi aplikasi.
 5. Deploy aplikasi. Untuk perubahan skema berikutnya, tambahkan migration Prisma ke GitHub; proses
@@ -165,8 +167,6 @@ src/
   lib/                 # auth (JWT cookie), prisma, format, password
   components/          # UI + form log + navigasi
 tests/                 # pengujian aturan bisnis (Vitest)
-docker-compose.yml     # db + mailpit + app
-Dockerfile
 ```
 
 ---
@@ -176,7 +176,8 @@ Dockerfile
 Tes menegakkan aturan bisnis di atas (1 log/tanggal, log terkunci, pembatasan peran, audit, laporan
 hanya dari log disetujui, kirim hanya laporan final, masa berlaku tautan, verifikasi QR).
 
-Prasyarat: PostgreSQL berjalan (paling mudah: `docker compose up -d db`).
+Prasyarat: PostgreSQL yang dapat diakses (lokal atau Supabase). Untuk Supabase, set
+`TEST_DATABASE_URL` ke koneksi database uji (jangan pakai database produksi).
 
 ```bash
 npm install
@@ -202,8 +203,8 @@ Lihat `.env.example`. Yang penting:
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_FROM` | SMTP email. Bila `SMTP_HOST` kosong, email hanya dicatat ke tabel `EmailOutbox` (tidak benar-benar terkirim) |
 | `LINK_EXPIRY_DAYS` | Masa berlaku tautan aman (hari) |
 
-Pada `docker compose`, email diarahkan ke **Mailpit** (`SMTP_HOST=mailpit`, port `1025`) sehingga
-semua email dapat dilihat di http://localhost:8025 tanpa konfigurasi tambahan.
+Bila `SMTP_HOST` dikosongkan, email tidak benar-benar terkirim dan hanya dicatat ke tabel `EmailOutbox`,
+sehingga aplikasi tetap bisa diuji tanpa server SMTP.
 
 ---
 
