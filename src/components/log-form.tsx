@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { saveLogAction } from "@/server/actions/logs";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, UPLOAD_ACCEPT } from "@/lib/uploads";
 
 export type LogFormValues = {
   id?: string;
@@ -18,6 +19,50 @@ export type LogFormValues = {
   proofId?: string | null;
   proofName?: string | null;
 };
+
+function loadImage(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Gagal memuat gambar"));
+    };
+    image.src = url;
+  });
+}
+
+/**
+ * Kompres gambar di browser agar muat di bawah batas unggah (foto HP sering > 4 MB).
+ * Berkas non-gambar (mis. PDF) dan gambar yang sudah cukup kecil dilewatkan apa adanya.
+ */
+async function shrinkImageToLimit(file: File): Promise<File> {
+  if (file.size <= MAX_UPLOAD_BYTES || !file.type.startsWith("image/")) return file;
+  try {
+    const image = await loadImage(file);
+    const scale = Math.min(1, Math.sqrt(MAX_UPLOAD_BYTES / file.size) * 0.95);
+    const width = Math.max(1, Math.round(image.naturalWidth * scale));
+    const height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(image, 0, 0, width, height);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/jpeg", 0.85),
+    );
+    if (!blob || blob.size >= file.size) return file;
+    const name = `${file.name.replace(/\.[^.]+$/, "") || "foto"}.jpg`;
+    return new File([blob], name, { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}
 
 function FileUploader({
   name,
@@ -36,11 +81,18 @@ function FileUploader({
   const [error, setError] = useState("");
 
   async function onChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const input = e.target;
+    const raw = input.files?.[0];
+    if (!raw) return;
     setLoading(true);
     setError("");
     try {
+      const file = await shrinkImageToLimit(raw);
+      if (file.size > MAX_UPLOAD_BYTES) {
+        setError(`Ukuran file maksimal ${MAX_UPLOAD_LABEL}.`);
+        input.value = "";
+        return;
+      }
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body: fd });
@@ -64,14 +116,14 @@ function FileUploader({
       <input type="hidden" name={name} value={id} />
       <input
         type="file"
-        accept="image/*,application/pdf"
+        accept={UPLOAD_ACCEPT}
         onChange={onChange}
         className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-700"
       />
       {loading ? <p className="mt-1 text-xs text-slate-400">Mengunggah...</p> : null}
       {fileName ? <p className="mt-1 text-xs text-emerald-600">Terunggah: {fileName}</p> : null}
       {error ? <p className="mt-1 text-xs text-rose-600">{error}</p> : null}
-      <p className="mt-1 text-xs text-slate-400">Maksimal 5 MB (gambar/PDF).</p>
+      <p className="mt-1 text-xs text-slate-400">Maksimal {MAX_UPLOAD_LABEL} (gambar/PDF). Foto besar otomatis dikecilkan.</p>
     </div>
   );
 }

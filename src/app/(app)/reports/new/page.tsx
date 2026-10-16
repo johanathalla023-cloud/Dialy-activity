@@ -2,10 +2,10 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createReportAction } from "@/server/actions/reports";
 import { Alert, PageHeader } from "@/components/ui";
-import { formatDateInput } from "@/lib/format";
+import { formatDateInput, todayDate } from "@/lib/format";
 
 function daysAgo(n: number): string {
-  const d = new Date();
+  const d = todayDate();
   d.setUTCDate(d.getUTCDate() - n);
   return formatDateInput(d);
 }

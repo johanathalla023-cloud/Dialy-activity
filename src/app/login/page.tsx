@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { loginAction } from "@/server/actions/auth";
 import { Alert } from "@/components/ui";
+import { SubmitButton } from "@/components/submit-button";
 
 export default async function LoginPage({
   searchParams,
@@ -52,9 +53,7 @@ export default async function LoginPage({
               placeholder="••••••••"
             />
           </div>
-          <button type="submit" className="btn btn-primary w-full">
-            Masuk
-          </button>
+          <SubmitButton pendingText="Memproses…">Masuk</SubmitButton>
         </form>
       </div>
     </div>

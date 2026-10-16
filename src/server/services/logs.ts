@@ -1,7 +1,7 @@
 import type { Attendance, DailyReport } from "@prisma/client";
 import { AppError } from "./errors";
 import { recordAudit } from "./audit";
-import { toDateOnly } from "@/lib/format";
+import { todayDate, toDateOnly } from "@/lib/format";
 import type { Actor, Db } from "./types";
 
 export type StudentLogInput = {
@@ -26,7 +26,7 @@ function clean(value?: string | null): string | null {
 export function validateLogInput(input: StudentLogInput) {
   if (!input.date) throw new AppError("TANGGAL_WAJIB", "Tanggal wajib diisi.");
   const date = toDateOnly(input.date);
-  const today = toDateOnly(new Date());
+  const today = todayDate();
   if (date.getTime() > today.getTime()) {
     throw new AppError("TANGGAL_MASA_DEPAN", "Tanggal tidak boleh melebihi hari ini.");
   }

@@ -2,7 +2,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createPlacementAction } from "@/server/actions/admin";
 import { Alert, Badge, PageHeader } from "@/components/ui";
-import { formatDate, formatDateInput } from "@/lib/format";
+import { formatDate, todayInput } from "@/lib/format";
 
 export default async function PlacementsPage({ searchParams }: { searchParams: { error?: string; ok?: string } }) {
   await requireRole(["HRD", "ADMIN"]);
@@ -57,7 +57,7 @@ export default async function PlacementsPage({ searchParams }: { searchParams: {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">Mulai</label>
-            <input name="startDate" type="date" className="input" defaultValue={formatDateInput(new Date())} required />
+            <input name="startDate" type="date" className="input" defaultValue={todayInput()} required />
           </div>
           <div>
             <label className="label">Selesai (opsional)</label>

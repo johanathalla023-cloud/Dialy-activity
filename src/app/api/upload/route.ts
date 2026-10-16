@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentActor } from "@/lib/actor";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/uploads";
 
 export const runtime = "nodejs";
 
@@ -15,8 +16,8 @@ export async function POST(request: Request) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "File tidak ditemukan." }, { status: 400 });
   }
-  if (file.size > 5 * 1024 * 1024) {
-    return NextResponse.json({ error: "Ukuran file maksimal 5 MB." }, { status: 400 });
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return NextResponse.json({ error: `Ukuran file maksimal ${MAX_UPLOAD_LABEL}.` }, { status: 400 });
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());

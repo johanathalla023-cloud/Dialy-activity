@@ -6,6 +6,8 @@ penerbitan laporan resmi (PDF bernomor + QR verifikasi) dan pengiriman tautan am
 Dibangun dengan **Next.js 14 (App Router) + TypeScript**, **PostgreSQL (Supabase) + Prisma**,
 dan **Tailwind CSS**. Antarmuka mobile-first dan berbahasa Indonesia.
 
+> Panduan singkat untuk siswa ada di [`PANDUAN-SISWA.md`](./PANDUAN-SISWA.md).
+
 ---
 
 ## 1. Cara Menjalankan
@@ -220,12 +222,16 @@ sehingga aplikasi tetap bisa diuji tanpa server SMTP.
 5. **Minta revisi laporan ke siswa** berarti menandai laporan `REVISI` + catatan; siswa kemudian
    dapat menambah/memperbaiki log (log yang sudah disetujui tetap terkunci) dan HRD menyegarkan
    laporan (`Segarkan Log`) sebelum final.
-6. **Lampiran (foto/bukti)** disimpan di database sebagai base64 (`FileAsset`, maks 5 MB) dan
+6. **Lampiran (foto/bukti)** disimpan di database sebagai base64 (`FileAsset`, maks 4 MB) dan
    disajikan via `/api/files/[id]` — menghindari ketergantungan penyimpanan berkas eksternal.
+   Batas 4 MB dipilih agar aman terhadap limit body Serverless Function Vercel (~4,5 MB);
+   foto besar otomatis dikecilkan di browser sebelum diunggah.
 7. **PDF** dihasilkan di sisi server dengan `pdfkit`; QR memakai pustaka `qrcode`. Format tanggal
    memakai UTC.
-8. **Zona waktu** aplikasi diseragamkan ke UTC untuk kolom tanggal (`@db.Date`) dan validasi
-   “tidak boleh tanggal masa depan”.
+8. **Zona waktu** aplikasi memakai **Asia/Jakarta (WIB)** untuk menentukan tanggal "hari ini"
+   (kolom `@db.Date`) dan menampilkan jam. Nilai tanggal tetap disimpan pada tengah malam UTC
+   agar aman terhadap penyimpanan `@db.Date`. Validasi “tidak boleh tanggal masa depan” juga
+   mengikuti WIB.
 9. **Alamat email pengirim** default `no-reply@transhybrid.test` (domain contoh).
 10. Versi `next@14.2.35` dipakai (rilis 14.2.x terbaru yang sudah ditambal). Untuk jangka panjang
     disarankan bermigrasi ke Next.js 15+.
@@ -245,3 +251,22 @@ npm run db:seed        # siapkan akun demo dan bersihkan log/laporan contoh lama
 npm run db:push        # sinkronkan skema tanpa migrasi
 npx prisma studio      # jelajah database
 ```
+
+---
+
+## 11. Checklist Sebelum Live
+
+Periksa hal-hal berikut agar aplikasi berjalan lancar saat dipakai siswa:
+
+1. **Environment Variables di Vercel** (Production **dan** Preview, lalu Redeploy):
+   `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET` (acak ≥ 32 karakter), dan `APP_URL`
+   (URL publik, mis. `https://nama-app.vercel.app`). Tanpa `AUTH_SECRET` yang benar,
+   proses build produksi akan berhenti dengan pesan jelas.
+2. **Build Command** `npm run vercel-build` (menjalankan `prisma migrate deploy` sebelum build).
+3. **Migrasi** sudah terbaru (`npm run db:migrate`).
+4. **Email (opsional)**: isi `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS` bila HRD ingin mengirim
+   tautan laporan ke sekolah. Bila kosong, email hanya tercatat di `EmailOutbox` (tidak terkirim).
+5. **`APP_URL` benar** — dipakai untuk tautan QR verifikasi, tautan aman email, dan tautan unduh PDF.
+6. **Uji cepat di HP**: login siswa → isi log hari ini (Hadir + foto > 4 MB) → Ajukan → login pembimbing
+   → setujui/minta revisi → login HRD → buat & finalkan laporan → unduh PDF → scan QR.
+7. **Jangan** menjalankan `npm run db:seed` di database produksi.

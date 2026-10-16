@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Alert, LogStatusBadge, ReportStatusBadge } from "@/components/ui";
-import { ATTENDANCE_LABEL, formatDate, formatDateShort, formatDateTime } from "@/lib/format";
+import { ATTENDANCE_LABEL, formatDate, formatDateShort, formatDateTime, todayDate } from "@/lib/format";
 
 export default async function DashboardPage({
   searchParams,
@@ -45,7 +45,7 @@ async function StudentDashboard({ studentId }: { studentId: string }) {
     prisma.dailyReport.count({ where: { studentId, status: "REVISI" } }),
     prisma.dailyReport.findMany({ where: { studentId }, orderBy: { date: "desc" }, take: 5 }),
     prisma.dailyReport.findFirst({
-      where: { studentId, date: new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z") },
+      where: { studentId, date: todayDate() },
     }),
   ]);
 

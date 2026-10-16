@@ -3,11 +3,11 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LogForm } from "@/components/log-form";
 import { Alert, PageHeader } from "@/components/ui";
-import { formatDateInput, toDateOnly } from "@/lib/format";
+import { todayInput, toDateOnly } from "@/lib/format";
 
 export default async function NewLogPage({ searchParams }: { searchParams: { error?: string } }) {
   const user = await requireRole(["SISWA"]);
-  const today = formatDateInput(new Date());
+  const today = todayInput();
 
   const existing = await prisma.dailyReport.findUnique({
     where: { studentId_date: { studentId: user.studentId!, date: toDateOnly(today) } },

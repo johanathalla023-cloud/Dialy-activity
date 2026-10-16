@@ -41,12 +41,14 @@ export function AppNav({ role }: { role: string }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex-1 py-3 text-center text-sm font-medium ${
+              prefetch
+              aria-current={active ? "page" : undefined}
+              className={`flex-1 py-3 text-center text-sm font-medium transition active:opacity-60 ${
                 active ? "text-brand-700" : "text-slate-500"
               }`}
             >
               <span
-                className={`mx-auto mb-1 block h-1 w-8 rounded-full ${
+                className={`mx-auto mb-1 block h-1 w-8 rounded-full transition ${
                   active ? "bg-brand-600" : "bg-transparent"
                 }`}
               />

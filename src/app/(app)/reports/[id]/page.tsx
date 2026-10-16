@@ -14,6 +14,9 @@ import { Alert, PageHeader, ReportStatusBadge } from "@/components/ui";
 import { ATTENDANCE_LABEL, REPORT_TYPE_LABEL, dayName, formatDate, formatDateShort, formatDateTime } from "@/lib/format";
 import { getReportForActor } from "@/server/services";
 
+/** Ukuran kotak QR = ukuran SVG QR, supaya keduanya selalu sama persis. */
+const QR_SIZE = 110;
+
 export default async function ReportDetailPage({
   params,
   searchParams,
@@ -29,7 +32,7 @@ export default async function ReportDetailPage({
   const isManager = user.role === "HRD" || user.role === "ADMIN";
   const isFinal = report.status === "FINAL";
   const verifyUrl = `${env.appUrl}/verify/${report.verificationToken}`;
-  const qrSvg = await QRCode.toString(verifyUrl, { type: "svg", margin: 1, width: 150 });
+  const qrSvg = await QRCode.toString(verifyUrl, { type: "svg", margin: 1, width: QR_SIZE });
 
   return (
     <div>
@@ -57,7 +60,11 @@ export default async function ReportDetailPage({
       </div>
 
       <div className="card mt-4 flex items-center gap-4">
-        <div className="h-[110px] w-[110px] shrink-0" dangerouslySetInnerHTML={{ __html: qrSvg }} />
+        <div
+          className="shrink-0 [&>svg]:block [&>svg]:h-full [&>svg]:w-full"
+          style={{ width: QR_SIZE, height: QR_SIZE }}
+          dangerouslySetInnerHTML={{ __html: qrSvg }}
+        />
         <div className="text-sm">
           <p className="font-semibold text-slate-800">Verifikasi Keaslian (QR)</p>
           <p className="mt-0.5 text-xs text-slate-500">
